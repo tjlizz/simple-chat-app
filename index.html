@@ -147,6 +147,14 @@
             position: relative; /* 添加相对定位 */
         }
         
+        /* 添加聊天内容容器，用于应用透明度 */
+        .chat-content {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            transition: opacity 0.3s;
+        }
+        
         /* 添加背景图片区域 */
         .background-image {
             position: absolute;
@@ -154,14 +162,13 @@
             left: 50%;
             transform: translateX(-50%);
             width: 70%; /* 设置宽度 */
-            max-width: 600px; /* 最大宽度 */
-            height: 200px; /* 设置高度 */
-            z-index: -1; /* 确保在聊天内容后面 */
-            background-image: url('/api/placeholder/600/200'); /* 使用placeholder作为示例 */
-            background-size: contain;
+            height: 300px; /* 设置高度 */
+            z-index: 0; /* 设置为0，使其在聊天内容之下但可以独立控制 */
+            background-image: url('/img//bg.png'); /* 使用placeholder作为示例 */
+            background-size: cover;
             background-repeat: no-repeat;
             background-position: center;
-            opacity: 0.3; /* 半透明效果 */
+            opacity: 0.9; /* 增加默认透明度，使其更加明显 */
             pointer-events: none; /* 确保图片不会干扰点击事件 */
         }
         
@@ -189,6 +196,7 @@
             padding: 10px;
             position: relative; /* 为了正确定位内容 */
             z-index: 1; /* 确保内容在背景图之上 */
+            background-color: rgba(255, 255, 255, 0.01); /* 几乎完全透明的背景 */
         }
         
         .message {
@@ -331,30 +339,33 @@
 </head>
 <body>
     <div class="chat-container" id="chat-container">
-        <div class="chat-header">
-            <h3></h3>
-            <div class="controls">
-                <div class="control-group">
-                    <label for="opacity-slider">透明度:</label>
-                    <input type="range" id="opacity-slider" min="20" max="100" value="80">
-                </div>
-                <div class="control-group">
-                    <label for="font-size">字体大小:</label>
-                    <input type="range" id="font-size-slider" min="12" max="24" value="16">
-                    <span id="font-size-value">16px</span>
-                </div>
-                <button class="clear-btn" id="clear-btn">清除页面</button>
-            </div>
-        </div>
-        
         <!-- 添加背景图片区域 -->
         <div class="background-image" id="background-image"></div>
         
-        <div class="chat-messages" id="chat-messages"></div>
-        
-        <div class="message-input">
-            <textarea id="message-box" placeholder="输入消息..." rows="1"></textarea>
-            <button id="send-button">发送</button>
+        <!-- 将聊天内容包裹在一个容器中，用于单独控制透明度 -->
+        <div class="chat-content" id="chat-content">
+            <div class="chat-header">
+                <h3></h3>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="opacity-slider">透明度:</label>
+                        <input type="range" id="opacity-slider" min="20" max="100" value="80">
+                    </div>
+                    <div class="control-group">
+                        <label for="font-size">字体大小:</label>
+                        <input type="range" id="font-size-slider" min="12" max="24" value="16">
+                        <span id="font-size-value">16px</span>
+                    </div>
+                    <button class="clear-btn" id="clear-btn">清除页面</button>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages"></div>
+            
+            <div class="message-input">
+                <textarea id="message-box" placeholder="输入消息..." rows="1"></textarea>
+                <button id="send-button">发送</button>
+            </div>
         </div>
     </div>
 
@@ -364,6 +375,7 @@
         const fontSizeSlider = document.getElementById('font-size-slider');
         const fontSizeValue = document.getElementById('font-size-value');
         const chatContainer = document.getElementById('chat-container');
+        const chatContent = document.getElementById('chat-content');
         const chatMessages = document.getElementById('chat-messages');
         const messageBox = document.getElementById('message-box');
         const sendButton = document.getElementById('send-button');
@@ -389,7 +401,8 @@
             // 设置透明度调节
             opacitySlider.addEventListener('input', function() {
                 const opacity = this.value / 100;
-                chatContainer.style.opacity = opacity;
+                chatContent.style.opacity = opacity;
+                // 背景图不受影响，保持原有透明度
             });
             
             // 设置字体大小调节
