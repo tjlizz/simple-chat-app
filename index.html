@@ -336,6 +336,7 @@
         const userId = getUserId();
         const POLL_INTERVAL = 2000; // 轮询间隔（毫秒）
         let lastMessageTimestamp = 0;
+        let displayedMessageIds = new Set(); // 存储已显示的消息ID
         
         // 计算一小时前的时间戳作为初始时间点
         lastMessageTimestamp = Date.now() - (60 * 60 * 1000);
@@ -373,11 +374,7 @@
             });
             
             // 清除页面
-            clearBtn.addEventListener('click', function() {
-                while (chatMessages.firstChild) {
-                    chatMessages.removeChild(chatMessages.firstChild);
-                }
-            });
+            clearBtn.addEventListener('click', clearPage);
             
             // 自适应窗口大小
             window.addEventListener('resize', function() {
@@ -395,9 +392,6 @@
             // 启动轮询获取新消息
             fetchMessages();
             setInterval(fetchMessages, POLL_INTERVAL);
-            
-            // 发送欢迎消息
-            // appendMessage("你好，欢迎使用聊天界面！您的用户ID是: " + userId.substring(0, 5) + "...", false);
         }
         
         // 发送消息到服务器
@@ -452,13 +446,19 @@
                     
                     // 显示新消息 - 显示所有用户的消息（包括自己的）
                     messages.forEach(msg => {
-                        // 判断是否是自己发送的消息
-                        const isSelf = msg.user_id === userId;
-                        appendMessage(msg.message, isSelf);
-                        
-                        // 如果不是自己发送的消息，触发通知（无论页面是否活跃）
-                        if (!isSelf) {
-                            sendNotification();
+                        // 检查消息是否已显示过
+                        if (!displayedMessageIds.has(msg.id)) {
+                            // 判断是否是自己发送的消息
+                            const isSelf = msg.user_id === userId;
+                            appendMessage(msg.message, isSelf);
+                            
+                            // 将消息ID添加到已显示集合中
+                            displayedMessageIds.add(msg.id);
+                            
+                            // 如果不是自己发送的消息，触发通知
+                            if (!isSelf) {
+                                sendNotification();
+                            }
                         }
                     });
                     
@@ -476,6 +476,15 @@
             messageElement.className = isSelf ? 'message self' : 'message other';
             messageElement.textContent = text;
             chatMessages.appendChild(messageElement);
+        }
+        
+        // 清除页面并重置已显示消息记录
+        function clearPage() {
+            while (chatMessages.firstChild) {
+                chatMessages.removeChild(chatMessages.firstChild);
+            }
+            // 重置已显示消息集合，避免清除后无法再次显示相同消息
+            displayedMessageIds.clear();
         }
         
         // 自动调整文本域高度
