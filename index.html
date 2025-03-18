@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>简洁聊天界面</title>
+    <title>百度一下</title>
     <script>
         // 生成随机用户ID或从localStorage获取
         function getUserId() {
@@ -126,28 +126,52 @@
         /* 滑动条(range)样式 */
         input[type="range"] {
             -webkit-appearance: none;
-            background: transparent;
+            width: 100%;
+            height: 4px;
+            background: rgba(200, 200, 200, 0.2);
+            border-radius: 2px;
+            margin: 10px 0;
         }
         
         input[type="range"]::-webkit-slider-runnable-track {
-            background: transparent;
-            border: 1px solid transparent;
-            height: 5px;
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(200, 200, 200, 0.2);
+            border-radius: 2px;
+            border: 0;
         }
         
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            border: 1px solid transparent;
             height: 16px;
             width: 16px;
             border-radius: 50%;
-            background: transparent;
+            background: rgba(200, 200, 200, 0.5);
             cursor: pointer;
             margin-top: -6px;
+            box-shadow: 0 0 2px rgba(0, 0, 0, 0.1);
         }
         
         input[type="range"]:focus {
             outline: none;
+        }
+        
+        input[type="range"]::-moz-range-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(200, 200, 200, 0.2);
+            border-radius: 2px;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: rgba(200, 200, 200, 0.5);
+            cursor: pointer;
+            border: 0;
         }
         
         label {
@@ -171,7 +195,7 @@
 <body>
     <div class="chat-container" id="chat-container">
         <div class="chat-header">
-            <h3>聊天界面</h3>
+            <h3></h3>
             <div class="controls">
                 <div class="control-group">
                     <label for="opacity-slider">透明度:</label>
