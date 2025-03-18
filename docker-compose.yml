@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  chat-app:
+    build: .
+    container_name: simple-chat-app
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./index.html:/app/index.html
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
