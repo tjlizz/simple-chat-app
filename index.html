@@ -164,7 +164,7 @@
             width: 70%; /* 设置宽度 */
             height: 300px; /* 设置高度 */
             z-index: 0; /* 设置为0，使其在聊天内容之下但可以独立控制 */
-            background-image: url('/img//bg.png'); /* 使用placeholder作为示例 */
+            background-image: url('/img//bg.png'); /* 使用实际背景图 */
             background-size: cover;
             background-repeat: no-repeat;
             background-position: center;
@@ -177,11 +177,54 @@
             justify-content: space-between;
             padding: 10px;
             border-bottom: 1px solid transparent;
+            position: relative;
         }
         
         .controls {
             display: flex;
             gap: 15px;
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background-color: rgba(240, 240, 240, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .controls.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+        
+        .control-trigger {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            width: 30px;
+            height: 30px;
+            background-color: rgba(200, 200, 200, 0.5);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 5;
+        }
+        
+        .control-trigger:hover {
+            background-color: rgba(180, 180, 180, 0.7);
+        }
+        
+        .control-trigger::after {
+            content: "⚙️";
+            font-size: 16px;
         }
         
         .control-group {
@@ -346,7 +389,10 @@
         <div class="chat-content" id="chat-content">
             <div class="chat-header">
                 <h3></h3>
-                <div class="controls">
+                <!-- 添加触发按钮 -->
+                <div class="control-trigger" id="control-trigger"></div>
+                <!-- 控制面板，默认隐藏 -->
+                <div class="controls" id="controls">
                     <div class="control-group">
                         <label for="opacity-slider">透明度:</label>
                         <input type="range" id="opacity-slider" min="20" max="100" value="80">
@@ -381,6 +427,8 @@
         const sendButton = document.getElementById('send-button');
         const clearBtn = document.getElementById('clear-btn');
         const backgroundImage = document.getElementById('background-image');
+        const controlTrigger = document.getElementById('control-trigger');
+        const controls = document.getElementById('controls');
         
         // 用户ID和轮询间隔
         const userId = getUserId();
@@ -432,6 +480,38 @@
             // 自适应窗口大小
             window.addEventListener('resize', function() {
                 // 自适应逻辑已通过CSS flex实现
+            });
+            
+            // 设置控制面板悬浮显示
+            // 点击触发按钮时显示控制面板
+            controlTrigger.addEventListener('click', function() {
+                controls.classList.toggle('visible');
+            });
+            
+            // 鼠标悬浮在触发区域时显示控制面板
+            controlTrigger.addEventListener('mouseenter', function() {
+                controls.classList.add('visible');
+            });
+            
+            // 鼠标离开控制面板时隐藏
+            controls.addEventListener('mouseleave', function() {
+                controls.classList.remove('visible');
+            });
+            
+            // 确保控制面板在使用时不会自动隐藏
+            controls.addEventListener('mouseenter', function() {
+                clearTimeout(hideControlsTimeout);
+            });
+            
+            // 鼠标离开触发按钮时，延迟隐藏控制面板
+            let hideControlsTimeout;
+            controlTrigger.addEventListener('mouseleave', function() {
+                hideControlsTimeout = setTimeout(() => {
+                    // 只有在鼠标不在控制面板上时才隐藏
+                    if (!controls.matches(':hover')) {
+                        controls.classList.remove('visible');
+                    }
+                }, 300);
             });
             
             // 加载保存的字体大小设置
