@@ -14,6 +14,109 @@
             }
             return userId;
         }
+        
+        // 浏览器通知功能
+        function setupNotifications() {
+            if (!("Notification" in window)) {
+                console.log("此浏览器不支持通知");
+                return;
+            }
+            
+            // 检查通知权限
+            if (Notification.permission === "denied") {
+                console.log("通知权限已被拒绝");
+                // 仅在第一次加载时显示提示（使用sessionStorage控制）
+                if (!sessionStorage.getItem('notification_denied_tip_shown')) {
+                    const deniedTip = document.createElement('div');
+                    deniedTip.style.cssText = `
+                        position: fixed;
+                        top: 10px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        padding: 10px 15px;
+                        background: rgba(200, 200, 200, 0.3);
+                        border-radius: 4px;
+                        font-size: 12px;
+                        z-index: 1000;
+                        max-width: 80%;
+                        text-align: center;
+                    `;
+                    deniedTip.textContent = "通知权限已被禁用。如需开启，请在浏览器设置中允许本站发送通知。";
+                    
+                    // 添加关闭按钮
+                    const closeBtn = document.createElement('span');
+                    closeBtn.style.cssText = `
+                        margin-left: 10px;
+                        cursor: pointer;
+                        font-weight: bold;
+                    `;
+                    closeBtn.textContent = "×";
+                    closeBtn.onclick = function() {
+                        document.body.removeChild(deniedTip);
+                    };
+                    
+                    deniedTip.appendChild(closeBtn);
+                    document.body.appendChild(deniedTip);
+                    
+                    // 10秒后自动消失
+                    setTimeout(() => {
+                        if (document.body.contains(deniedTip)) {
+                            document.body.removeChild(deniedTip);
+                        }
+                    }, 10000);
+                    
+                    // 记录已经显示过提示
+                    sessionStorage.setItem('notification_denied_tip_shown', 'true');
+                }
+            } else if (Notification.permission !== "granted") {
+                // 默认请求通知权限
+                Notification.requestPermission().then(permission => {
+                    console.log("通知权限: " + permission);
+                });
+            } else {
+                console.log("已获得通知权限");
+            }
+        }
+        
+        // 发送通知
+        function sendNotification() {
+            console.log("尝试发送通知, 权限状态:", Notification.permission, "页面状态:", document.hidden ? "隐藏" : "可见");
+            
+            // 总是尝试发送通知，不仅限于页面隐藏时
+            if (Notification.permission === "granted") {
+                try {
+                    const notification = new Notification("新消息提醒", {
+                        body: "您收到了一条新消息",
+                        icon: "",  // 可以添加图标URL
+                        silent: false,
+                        requireInteraction: false
+                    });
+                    
+                    // 点击通知时聚焦到窗口
+                    notification.onclick = function() {
+                        window.focus();
+                        this.close();
+                    };
+                    
+                    // 3秒后自动关闭
+                    setTimeout(() => {
+                        notification.close();
+                    }, 3000);
+                    
+                    console.log("通知已发送");
+                } catch (error) {
+                    console.error("发送通知出错:", error);
+                }
+            } else if (Notification.permission !== "denied") {
+                // 如果权限尚未确定，再次请求
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        // 获得权限后立即发送
+                        sendNotification();
+                    }
+                });
+            }
+        }
     </script>
     <style>
         body, html {
@@ -231,11 +334,17 @@
         
         // 用户ID和轮询间隔
         const userId = getUserId();
-        const POLL_INTERVAL = 1000; // 轮询间隔（毫秒）
+        const POLL_INTERVAL = 2000; // 轮询间隔（毫秒）
         let lastMessageTimestamp = 0;
+        
+        // 计算一小时前的时间戳作为初始时间点
+        lastMessageTimestamp = Date.now() - (60 * 60 * 1000);
         
         // 初始化
         function init() {
+            // 设置通知
+            setupNotifications();
+            
             // 设置透明度调节
             opacitySlider.addEventListener('input', function() {
                 const opacity = this.value / 100;
@@ -288,7 +397,7 @@
             setInterval(fetchMessages, POLL_INTERVAL);
             
             // 发送欢迎消息
-            // appendMessage("你好，欢迎使用聊天界面！您的用户ID是: " + userId.substring(0, 5) + "...", false);
+            appendMessage("你好，欢迎使用聊天界面！您的用户ID是: " + userId.substring(0, 5) + "...", false);
         }
         
         // 发送消息到服务器
@@ -341,11 +450,15 @@
                     // 更新最后消息时间戳
                     lastMessageTimestamp = Math.max(...messages.map(msg => msg.timestamp));
                     
-                    // 显示新消息
+                    // 显示新消息 - 显示所有用户的消息（包括自己的）
                     messages.forEach(msg => {
-                        // 如果不是自己发送的消息才显示
-                        if (msg.user_id !== userId) {
-                            appendMessage(msg.message, false);
+                        // 判断是否是自己发送的消息
+                        const isSelf = msg.user_id === userId;
+                        appendMessage(msg.message, isSelf);
+                        
+                        // 如果不是自己发送的消息，触发通知（无论页面是否活跃）
+                        if (!isSelf) {
+                            sendNotification();
                         }
                     });
                     
