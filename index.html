@@ -80,6 +80,14 @@
         
         // 发送通知
         function sendNotification() {
+            const currentTime = Date.now();
+            // 检查是否在冷却期内
+            if (currentTime - lastNotificationTime < NOTIFICATION_COOLDOWN) {
+                console.log("通知在冷却期内，跳过", 
+                    Math.round((NOTIFICATION_COOLDOWN - (currentTime - lastNotificationTime))/60000) + "分钟后可再次通知");
+                return;
+            }
+            
             console.log("尝试发送通知, 权限状态:", Notification.permission, "页面状态:", document.hidden ? "隐藏" : "可见");
             
             // 总是尝试发送通知，不仅限于页面隐藏时
@@ -91,6 +99,9 @@
                         silent: false,
                         requireInteraction: false
                     });
+                    
+                    // 更新最后通知时间
+                    lastNotificationTime = currentTime;
                     
                     // 点击通知时聚焦到窗口
                     notification.onclick = function() {
@@ -337,6 +348,8 @@
         const POLL_INTERVAL = 2000; // 轮询间隔（毫秒）
         let lastMessageTimestamp = 0;
         let displayedMessageIds = new Set(); // 存储已显示的消息ID
+        let lastNotificationTime = 0; // 上次通知时间
+        const NOTIFICATION_COOLDOWN = 10 * 60 * 1000; // 通知冷却时间（10分钟）
         
         // 计算一小时前的时间戳作为初始时间点
         lastMessageTimestamp = Date.now() - (60 * 60 * 1000);
@@ -414,8 +427,8 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // 显示自己的消息
-                    appendMessage(messageText, true);
+                    // 清空输入框但不在这里显示消息
+                    // 消息会通过fetchMessages显示
                     messageBox.value = '';
                     
                     // 自动调整文本域高度
@@ -423,9 +436,6 @@
                     
                     // 更新最后消息时间戳
                     lastMessageTimestamp = data.timestamp;
-                    
-                    // 自动滚动到底部
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
                 } else {
                     console.error('发送消息失败:', data.error);
                 }
