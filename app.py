@@ -60,6 +60,12 @@ def get_messages():
         'is_self': False  # 在客户端处理
     } for message in messages])
 
+
+@app.route('/img/bg.png')
+def serve_background():
+    return send_from_directory('img', 'bg.png', cache_timeout=60*60*24*30)
+
+
 @app.route('/api/messages', methods=['POST'])
 def send_message():
     data = request.json

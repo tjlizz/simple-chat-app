@@ -144,6 +144,23 @@
             height: 100vh;
             background-color: transparent; /* 无颜色 */
             transition: background-color 0.3s;
+            position: relative; /* 添加相对定位 */
+        }
+        
+        /* 添加背景图片区域 */
+        .background-image {
+            position: absolute;
+            top: 50px; /* 从顶部留出一些空间 */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70%; /* 设置宽度 */
+            height: 300px; /* 设置高度 */
+            z-index: -1; /* 确保在聊天内容后面 */
+            background-image: url('/img/bg.png'); /* 使用placeholder作为示例 */
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.8; /* 半透明效果 */
+            pointer-events: none; /* 确保图片不会干扰点击事件 */
         }
         
         .chat-header {
@@ -168,6 +185,8 @@
             flex: 1;
             overflow-y: auto;
             padding: 10px;
+            position: relative; /* 为了正确定位内容 */
+            z-index: 1; /* 确保内容在背景图之上 */
         }
         
         .message {
@@ -196,6 +215,8 @@
             display: flex;
             padding: 10px;
             border-top: 1px solid transparent;
+            position: relative; /* 确保输入框在适当的层级 */
+            z-index: 2; /* 确保输入区在最上层 */
         }
         
         #message-box {
@@ -324,6 +345,9 @@
             </div>
         </div>
         
+        <!-- 添加背景图片区域 -->
+        <div class="background-image" id="background-image"></div>
+        
         <div class="chat-messages" id="chat-messages"></div>
         
         <div class="message-input">
@@ -342,6 +366,7 @@
         const messageBox = document.getElementById('message-box');
         const sendButton = document.getElementById('send-button');
         const clearBtn = document.getElementById('clear-btn');
+        const backgroundImage = document.getElementById('background-image');
         
         // 用户ID和轮询间隔
         const userId = getUserId();
