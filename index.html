@@ -154,12 +154,14 @@
             left: 50%;
             transform: translateX(-50%);
             width: 70%; /* 设置宽度 */
-            height: 300px; /* 设置高度 */
+            max-width: 600px; /* 最大宽度 */
+            height: 200px; /* 设置高度 */
             z-index: -1; /* 确保在聊天内容后面 */
-            background-image: url('/img/bg.png'); /* 使用placeholder作为示例 */
+            background-image: url('/api/placeholder/600/200'); /* 使用placeholder作为示例 */
+            background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
-            opacity: 0.8; /* 半透明效果 */
+            opacity: 0.3; /* 半透明效果 */
             pointer-events: none; /* 确保图片不会干扰点击事件 */
         }
         
@@ -437,6 +439,18 @@
             const messageText = messageBox.value.trim();
             if (!messageText) return;
             
+            // 立即在界面上显示自己发送的消息
+            appendMessage(messageText, true);
+            
+            // 自动滚动到底部
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // 清空输入框
+            messageBox.value = '';
+            
+            // 自动调整文本域高度
+            messageBox.style.height = 'auto';
+            
             try {
                 const response = await fetch('/api/messages', {
                     method: 'POST',
@@ -452,12 +466,10 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // 清空输入框但不在这里显示消息
-                    // 消息会通过fetchMessages显示
-                    messageBox.value = '';
-                    
-                    // 自动调整文本域高度
-                    messageBox.style.height = 'auto';
+                    // 将消息ID添加到已显示集合中以避免重复显示
+                    if (data.id) {
+                        displayedMessageIds.add(data.id);
+                    }
                     
                     // 更新最后消息时间戳
                     lastMessageTimestamp = data.timestamp;
