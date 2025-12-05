@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>百度一下</title>
     <script>
-        // 生成随机用户ID或从localStorage获取
+        // 从URL参数中获取用户ID
         function getUserId() {
-            let userId = localStorage.getItem('chat_user_id');
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user_id');
+
             if (!userId) {
-                userId = 'user_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('chat_user_id', userId);
+                alert('错误：访问聊天页面时缺少用户ID参数！\n\n请使用以下格式访问：\nhttp://localhost:5000/?user_id=your_user_id');
+                return null;
             }
+
             return userId;
         }
         
@@ -153,23 +156,24 @@
             flex-direction: column;
             flex: 1;
             transition: opacity 0.3s;
+            position: relative; /* 确保内容在背景图片之上 */
+            z-index: 1; /* 确保内容层在背景图片之上 */
         }
         
         /* 添加背景图片区域 */
         .background-image {
-            position: absolute;
-            top: 50px; /* 从顶部留出一些空间 */
-            left: 50%;
-            transform: translateX(-50%);
-            width: 70%; /* 设置宽度 */
-            height: 300px; /* 设置高度 */
+            position: fixed; /* 固定定位，覆盖整个视口 */
+            top: 0;
+            left: 0;
+            width: 100vw; /* 视口宽度 */
+            height: 100vh; /* 视口高度 */
             z-index: 0; /* 设置为0，使其在聊天内容之下但可以独立控制 */
-            background-image: url('/img//bg.png'); /* 使用实际背景图 */
-            background-size: cover;
+            background-size: cover; /* 保持图片比例，覆盖整个区域 */
             background-repeat: no-repeat;
-            background-position: center;
+            background-position: center; /* 图片居中显示 */
             opacity: 0.9; /* 增加默认透明度，使其更加明显 */
             pointer-events: none; /* 确保图片不会干扰点击事件 */
+            background-image: url('/img/bg.png'); /* 默认背景图，会通过JS动态更新 */
         }
         
         .chat-header {
@@ -239,7 +243,10 @@
             padding: 10px;
             position: relative; /* 为了正确定位内容 */
             z-index: 1; /* 确保内容在背景图之上 */
-            background-color: rgba(255, 255, 255, 0.01); /* 几乎完全透明的背景 */
+            background-color: rgba(255, 255, 255, 0.1); /* 半透明背景，让背景图片可见 */
+            backdrop-filter: blur(2px); /* 添加轻微模糊效果 */
+            border-radius: 8px; /* 圆角 */
+            margin: 10px; /* 添加边距 */
         }
         
         .message {
@@ -251,16 +258,16 @@
             position: relative;
             clear: both;
         }
-        
+
         .message.self {
-            background-color: transparent;
-            border: 1px solid transparent;
+            background-color: rgba(200, 230, 255, 0.9); /* 淡蓝色背景 */
+            border: 1px solid rgba(150, 200, 255, 0.5); /* 淡蓝色边框 */
             float: right;
         }
-        
+
         .message.other {
-            background-color: transparent;
-            border: 1px solid transparent;
+            background-color: rgba(255, 255, 255, 0.9); /* 白色半透明背景 */
+            border: 1px solid rgba(200, 200, 200, 0.5); /* 灰色边框 */
             float: left;
         }
         
@@ -270,23 +277,30 @@
             border-top: 1px solid transparent;
             position: relative; /* 确保输入框在适当的层级 */
             z-index: 2; /* 确保输入区在最上层 */
+            background-color: rgba(255, 255, 255, 0.15); /* 半透明背景 */
+            backdrop-filter: blur(2px); /* 添加模糊效果 */
         }
         
         #message-box {
             flex: 1;
             padding: 10px;
-            border: none;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
             outline: none;
-            background: transparent;
+            background: rgba(255, 255, 255, 0.8);
             resize: none;
+            backdrop-filter: blur(2px);
         }
         
         #send-button {
-            background: transparent;
-            border: none;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
             cursor: pointer;
-            padding: 0 15px;
+            padding: 10px 15px;
             outline: none;
+            margin-left: 5px;
+            backdrop-filter: blur(2px);
         }
         
         #send-button:hover {
@@ -372,7 +386,7 @@
             cursor: pointer;
         }
         
-        .clear-btn, .font-size-btn {
+        .clear-btn, .font-size-btn, .upload-btn {
             padding: 5px 10px;
             color: inherit;
             border: 1px solid transparent;
@@ -402,6 +416,7 @@
                         <input type="range" id="font-size-slider" min="12" max="24" value="16">
                         <span id="font-size-value">16px</span>
                     </div>
+                    <button class="upload-btn" id="upload-btn" onclick="window.open('/upload?user_id=' + encodeURIComponent(userId), '_blank')">上传背景</button>
                     <button class="clear-btn" id="clear-btn">清除页面</button>
                 </div>
             </div>
@@ -443,9 +458,36 @@
         
         // 初始化
         function init() {
+            // 检查用户ID
+            if (!userId) {
+                // 如果没有用户ID，显示错误信息并阻止继续初始化
+                document.body.innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+                        <div>
+                            <h2 style="color: #dc3545;">❌ 错误</h2>
+                            <p style="color: #666; margin: 20px 0;">访问聊天页面时缺少用户ID参数</p>
+                            <p style="color: #666; margin: 20px 0;">请使用以下格式访问：</p>
+                            <code style="background: #f8f9fa; padding: 10px; border-radius: 4px; display: inline-block; margin: 10px 0;">
+                                http://localhost:5000/?user_id=your_user_id
+                            </code>
+                            <br><br>
+                            <button onclick="window.location.reload()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                                重新加载
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
             // 设置通知
             setupNotifications();
-            
+
+            // 设置用户背景图片
+            if (userId) {
+                backgroundImage.style.backgroundImage = `url('/img/bg.png?user_id=${encodeURIComponent(userId)}&t=${Date.now()}')`;
+            }
+
             // 设置透明度调节
             opacitySlider.addEventListener('input', function() {
                 const opacity = this.value / 100;

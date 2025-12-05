@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片上传</title>
+    <script>
+        // 从URL参数中获取用户ID
+        function getUserId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user_id');
+
+            if (!userId) {
+                alert('错误：用户ID参数缺失');
+                return null;
+            }
+
+            return userId;
+        }
+
+        // 显示用户ID
+        function displayUserId() {
+            const userId = getUserId();
+            const userIdElement = document.getElementById('user-id-display');
+            if (userIdElement) {
+                if (userId) {
+                    userIdElement.textContent = '用户ID: ' + userId;
+                } else {
+                    userIdElement.textContent = '错误：缺少用户ID参数';
+                    userIdElement.style.color = 'red';
+                }
+            }
+        }
+
+        // 预览图片
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const preview = document.getElementById('image-preview');
+                    const previewContainer = document.getElementById('preview-container');
+
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                }
+
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // 上传图片
+        async function uploadImage() {
+            const fileInput = document.getElementById('file-input');
+            const userId = getUserId();
+            const file = fileInput.files[0];
+
+            if (!userId) {
+                alert('错误：用户ID缺失，无法上传');
+                return;
+            }
+
+            if (!file) {
+                alert('请选择要上传的图片');
+                return;
+            }
+
+            // 检查文件类型
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('只支持 JPG, PNG, GIF, WEBP 格式的图片');
+                return;
+            }
+
+            // 检查文件大小 (16MB)
+            if (file.size > 16 * 1024 * 1024) {
+                alert('图片大小不能超过 16MB');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('user_id', userId);
+            formData.append('file', file);
+
+            const uploadBtn = document.getElementById('upload-btn');
+            const originalText = uploadBtn.textContent;
+
+            try {
+                // 显示上传中状态
+                uploadBtn.textContent = '上传中...';
+                uploadBtn.disabled = true;
+
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('图片上传成功！');
+                    // 清空预览
+                    document.getElementById('preview-container').style.display = 'none';
+                    fileInput.value = '';
+
+                    // 更新背景图片预览
+                    updateBackgroundPreview();
+                } else {
+                    alert('上传失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('上传出错:', error);
+                alert('上传失败，请重试');
+            } finally {
+                // 恢复按钮状态
+                uploadBtn.textContent = originalText;
+                uploadBtn.disabled = false;
+            }
+        }
+
+        // 更新背景图片预览
+        function updateBackgroundPreview() {
+            const userId = getUserId();
+            const bgPreview = document.getElementById('bg-preview');
+
+            if (userId) {
+                bgPreview.src = '/img/bg.png?user_id=' + userId + '&t=' + Date.now();
+                bgPreview.style.display = 'block';
+            } else {
+                bgPreview.style.display = 'none';
+            }
+        }
+
+        // 返回聊天页面
+        function goBack() {
+            window.location.href = '/';
+        }
+    </script>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: transparent;
+        }
+
+        .upload-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-card {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 30px;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+
+        #user-id-display {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .nav-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .nav-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 12px 20px;
+            background-color: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .file-input-label:hover {
+            background-color: #e9ecef;
+            border-color: #007bff;
+        }
+
+        .file-input-label.has-file {
+            background-color: #d4edda;
+            border-color: #28a745;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 12px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .upload-btn:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        .upload-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .preview-section {
+            margin-top: 20px;
+        }
+
+        .preview-container {
+            display: none;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .preview-title {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        #image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .bg-preview-section {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .bg-preview-title {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        #bg-preview {
+            display: none;
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-section {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .info-list {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .info-list li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="upload-container">
+        <div class="upload-card">
+            <div class="header">
+                <h1>📷 图片上传</h1>
+                <div id="user-id-display"></div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="goBack()">← 返回聊天</button>
+            </div>
+
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="file-input" accept="image/*" onchange="previewImage(this)">
+                    <label for="file-input" class="file-input-label" id="file-input-label">
+                        点击选择图片文件
+                    </label>
+                </div>
+
+                <button class="upload-btn" id="upload-btn" onclick="uploadImage()">
+                    上传图片
+                </button>
+            </div>
+
+            <div class="preview-section">
+                <div class="preview-container" id="preview-container">
+                    <div class="preview-title">图片预览：</div>
+                    <img id="image-preview" alt="预览图片">
+                </div>
+            </div>
+
+            <div class="bg-preview-section">
+                <div class="bg-preview-title">您的背景图片预览：</div>
+                <img id="bg-preview" alt="背景图片预览">
+            </div>
+
+            <div class="info-section">
+                <div class="info-title">使用说明：</div>
+                <ul class="info-list">
+                    <li>支持格式：JPG, PNG, GIF, WEBP</li>
+                    <li>文件大小：最大 16MB</li>
+                    <li>上传的图片将成为您的聊天背景</li>
+                    <li>只有您自己能看到上传的图片</li>
+                    <li>每次上传新图片会替换之前的背景</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', function() {
+            displayUserId();
+            updateBackgroundPreview();
+
+            // 监听文件选择，更新标签文本
+            const fileInput = document.getElementById('file-input');
+            const fileLabel = document.getElementById('file-input-label');
+
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    fileLabel.textContent = '已选择: ' + this.files[0].name;
+                    fileLabel.classList.add('has-file');
+                } else {
+                    fileLabel.textContent = '点击选择图片文件';
+                    fileLabel.classList.remove('has-file');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
