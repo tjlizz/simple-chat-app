@@ -575,7 +575,7 @@
             if (!messageText) return;
             
             // 立即在界面上显示自己发送的消息
-            appendMessage(messageText, true);
+            appendMessage(messageText, true, Date.now());
             
             // 自动滚动到底部
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -632,7 +632,7 @@
                         if (!displayedMessageIds.has(msg.id)) {
                             // 判断是否是自己发送的消息
                             const isSelf = msg.user_id === userId;
-                            appendMessage(msg.message, isSelf);
+                            appendMessage(msg.message, isSelf, msg.timestamp);
                             
                             // 将消息ID添加到已显示集合中
                             displayedMessageIds.add(msg.id);
@@ -653,10 +653,28 @@
         }
         
         // 将消息添加到聊天记录
-        function appendMessage(text, isSelf) {
+        function appendMessage(text, isSelf, timestamp) {
             const messageElement = document.createElement('div');
             messageElement.className = isSelf ? 'message self' : 'message other';
-            messageElement.textContent = text;
+
+            // 创建消息内容容器
+            const messageContent = document.createElement('span');
+            messageContent.textContent = text;
+            messageElement.appendChild(messageContent);
+
+            // 创建时间显示
+            const timeElement = document.createElement('span');
+            timeElement.className = 'message-time';
+            // 如果没有提供时间戳，使用当前时间
+            const messageTime = timestamp ? new Date(timestamp) : new Date();
+            const hours = messageTime.getHours().toString().padStart(2, '0');
+            const minutes = messageTime.getMinutes().toString().padStart(2, '0');
+            timeElement.textContent = ` ${hours}:${minutes}`;
+            timeElement.style.fontSize = '12px';
+            timeElement.style.opacity = '0.7';
+            timeElement.style.marginLeft = '5px';
+
+            messageElement.appendChild(timeElement);
             chatMessages.appendChild(messageElement);
         }
         
