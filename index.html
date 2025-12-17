@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,14 +18,14 @@
 
             return userId;
         }
-        
+
         // 浏览器通知功能
         function setupNotifications() {
             if (!("Notification" in window)) {
                 console.log("此浏览器不支持通知");
                 return;
             }
-            
+
             // 检查通知权限
             if (Notification.permission === "denied") {
                 console.log("通知权限已被拒绝");
@@ -45,7 +46,7 @@
                         text-align: center;
                     `;
                     deniedTip.textContent = "通知权限已被禁用。如需开启，请在浏览器设置中允许本站发送通知。";
-                    
+
                     // 添加关闭按钮
                     const closeBtn = document.createElement('span');
                     closeBtn.style.cssText = `
@@ -54,20 +55,20 @@
                         font-weight: bold;
                     `;
                     closeBtn.textContent = "×";
-                    closeBtn.onclick = function() {
+                    closeBtn.onclick = function () {
                         document.body.removeChild(deniedTip);
                     };
-                    
+
                     deniedTip.appendChild(closeBtn);
                     document.body.appendChild(deniedTip);
-                    
+
                     // 10秒后自动消失
                     setTimeout(() => {
                         if (document.body.contains(deniedTip)) {
                             document.body.removeChild(deniedTip);
                         }
                     }, 10000);
-                    
+
                     // 记录已经显示过提示
                     sessionStorage.setItem('notification_denied_tip_shown', 'true');
                 }
@@ -80,19 +81,19 @@
                 console.log("已获得通知权限");
             }
         }
-        
+
         // 发送通知
         function sendNotification() {
             const currentTime = Date.now();
             // 检查是否在冷却期内
             if (currentTime - lastNotificationTime < NOTIFICATION_COOLDOWN) {
-                console.log("通知在冷却期内，跳过", 
-                    Math.round((NOTIFICATION_COOLDOWN - (currentTime - lastNotificationTime))/60000) + "分钟后可再次通知");
+                console.log("通知在冷却期内，跳过",
+                    Math.round((NOTIFICATION_COOLDOWN - (currentTime - lastNotificationTime)) / 60000) + "分钟后可再次通知");
                 return;
             }
-            
+
             console.log("尝试发送通知, 权限状态:", Notification.permission, "页面状态:", document.hidden ? "隐藏" : "可见");
-            
+
             // 总是尝试发送通知，不仅限于页面隐藏时
             if (Notification.permission === "granted") {
                 try {
@@ -102,21 +103,21 @@
                         silent: false,
                         requireInteraction: false
                     });
-                    
+
                     // 更新最后通知时间
                     lastNotificationTime = currentTime;
-                    
+
                     // 点击通知时聚焦到窗口
-                    notification.onclick = function() {
+                    notification.onclick = function () {
                         window.focus();
                         this.close();
                     };
-                    
+
                     // 3秒后自动关闭
                     setTimeout(() => {
                         notification.close();
                     }, 3000);
-                    
+
                     console.log("通知已发送");
                 } catch (error) {
                     console.error("发送通知出错:", error);
@@ -133,49 +134,63 @@
         }
     </script>
     <style>
-        body, html {
+        body,
+        html {
             height: 100%;
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
             background-color: transparent;
         }
-        
+
         .chat-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            background-color: transparent; /* 无颜色 */
+            background-color: transparent;
+            /* 无颜色 */
             transition: background-color 0.3s;
-            position: relative; /* 添加相对定位 */
+            position: relative;
+            /* 添加相对定位 */
         }
-        
+
         /* 添加聊天内容容器，用于应用透明度 */
         .chat-content {
             display: flex;
             flex-direction: column;
             flex: 1;
             transition: opacity 0.3s;
-            position: relative; /* 确保内容在背景图片之上 */
-            z-index: 1; /* 确保内容层在背景图片之上 */
+            position: relative;
+            /* 确保内容在背景图片之上 */
+            z-index: 1;
+            /* 确保内容层在背景图片之上 */
         }
-        
+
         /* 添加背景图片区域 */
         .background-image {
-            position: fixed; /* 固定定位，覆盖整个视口 */
+            position: fixed;
+            /* 固定定位，覆盖整个视口 */
             top: 0;
             left: 0;
-            width: 100vw; /* 视口宽度 */
-            height: 100vh; /* 视口高度 */
-            z-index: 0; /* 设置为0，使其在聊天内容之下但可以独立控制 */
-            background-size: cover; /* 保持图片比例，覆盖整个区域 */
+            width: 100vw;
+            /* 视口宽度 */
+            height: 100vh;
+            /* 视口高度 */
+            z-index: 0;
+            /* 设置为0，使其在聊天内容之下但可以独立控制 */
+            background-size: cover;
+            /* 保持图片比例，覆盖整个区域 */
             background-repeat: no-repeat;
-            background-position: center; /* 图片居中显示 */
-            opacity: 0.9; /* 增加默认透明度，使其更加明显 */
-            pointer-events: none; /* 确保图片不会干扰点击事件 */
-            background-image: url('/img/bg.png'); /* 默认背景图，会通过JS动态更新 */
+            background-position: center;
+            /* 图片居中显示 */
+            opacity: 0.9;
+            /* 增加默认透明度，使其更加明显 */
+            pointer-events: none;
+            /* 确保图片不会干扰点击事件 */
+            background-image: url('/img/bg.png');
+            /* 默认背景图，会通过JS动态更新 */
         }
-        
+
         .chat-header {
             display: flex;
             justify-content: space-between;
@@ -189,7 +204,7 @@
             background-color: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(2px);
         }
-        
+
         .controls {
             display: flex;
             gap: 15px;
@@ -199,20 +214,20 @@
             background-color: rgba(240, 240, 240, 0.8);
             padding: 10px;
             border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             transition: opacity 0.3s ease, transform 0.3s ease;
             opacity: 0;
             transform: translateY(-10px);
             pointer-events: none;
             z-index: 10;
         }
-        
+
         .controls.visible {
             opacity: 1;
             transform: translateY(0);
             pointer-events: all;
         }
-        
+
         .control-trigger {
             position: absolute;
             right: 10px;
@@ -227,28 +242,30 @@
             cursor: pointer;
             z-index: 5;
         }
-        
+
         .control-trigger:hover {
             background-color: rgba(180, 180, 180, 0.7);
         }
-        
+
         .control-trigger::after {
             content: "⚙️";
             font-size: 16px;
         }
-        
+
         .control-group {
             display: flex;
             align-items: center;
             gap: 5px;
         }
-        
+
         .chat-messages {
             flex: 1;
             overflow-y: auto;
             padding: 10px;
-            padding-top: 70px; /* 为固定的头部留出空间 */
-            padding-bottom: 80px; /* 为固定的底部输入框留出空间 */
+            padding-top: 70px;
+            /* 为固定的头部留出空间 */
+            padding-bottom: 80px;
+            /* 为固定的底部输入框留出空间 */
             position: relative;
             z-index: 1;
             background-color: rgba(255, 255, 255, 0.1);
@@ -256,7 +273,7 @@
             border-radius: 8px;
             margin: 10px;
         }
-        
+
         .message {
             margin-bottom: 10px;
             max-width: 70%;
@@ -268,17 +285,21 @@
         }
 
         .message.self {
-            background-color: transparent; /* 透明背景 */
-            border: none; /* 移除边框 */
+            background-color: transparent;
+            /* 透明背景 */
+            border: none;
+            /* 移除边框 */
             float: right;
         }
 
         .message.other {
-            background-color: transparent; /* 透明背景 */
-            border: none; /* 移除边框 */
+            background-color: transparent;
+            /* 透明背景 */
+            border: none;
+            /* 移除边框 */
             float: left;
         }
-        
+
         .message-input {
             display: flex;
             padding: 10px;
@@ -291,7 +312,7 @@
             background-color: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(2px);
         }
-        
+
         #message-box {
             flex: 1;
             padding: 10px;
@@ -302,7 +323,7 @@
             resize: none;
             backdrop-filter: blur(2px);
         }
-        
+
         #send-button {
             background: rgba(255, 255, 255, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -313,29 +334,29 @@
             margin-left: 5px;
             backdrop-filter: blur(2px);
         }
-        
+
         #send-button:hover {
             opacity: 0.7;
         }
-        
+
         /* 滚动条样式 */
         ::-webkit-scrollbar {
             width: 6px;
         }
-        
+
         ::-webkit-scrollbar-track {
             background: transparent;
         }
-        
+
         ::-webkit-scrollbar-thumb {
             background: transparent;
             border-radius: 3px;
         }
-        
+
         ::-webkit-scrollbar-thumb:hover {
             background: transparent;
         }
-        
+
         /* 滑动条(range)样式 */
         input[type="range"] {
             -webkit-appearance: none;
@@ -345,7 +366,7 @@
             border-radius: 2px;
             margin: 10px 0;
         }
-        
+
         input[type="range"]::-webkit-slider-runnable-track {
             width: 100%;
             height: 4px;
@@ -354,7 +375,7 @@
             border-radius: 2px;
             border: 0;
         }
-        
+
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             height: 16px;
@@ -365,11 +386,11 @@
             margin-top: -6px;
             box-shadow: 0 0 2px rgba(0, 0, 0, 0.1);
         }
-        
+
         input[type="range"]:focus {
             outline: none;
         }
-        
+
         input[type="range"]::-moz-range-track {
             width: 100%;
             height: 4px;
@@ -377,7 +398,7 @@
             background: rgba(200, 200, 200, 0.2);
             border-radius: 2px;
         }
-        
+
         input[type="range"]::-moz-range-thumb {
             height: 16px;
             width: 16px;
@@ -386,18 +407,20 @@
             cursor: pointer;
             border: 0;
         }
-        
+
         label {
             font-size: 14px;
         }
-        
+
         button {
             border: none;
             background: transparent;
             cursor: pointer;
         }
-        
-        .clear-btn, .font-size-btn, .upload-btn {
+
+        .clear-btn,
+        .font-size-btn,
+        .upload-btn {
             padding: 5px 10px;
             color: inherit;
             border: 1px solid transparent;
@@ -405,11 +428,12 @@
         }
     </style>
 </head>
+
 <body>
     <div class="chat-container" id="chat-container">
         <!-- 添加背景图片区域 -->
         <div class="background-image" id="background-image"></div>
-        
+
         <!-- 将聊天内容包裹在一个容器中，用于单独控制透明度 -->
         <div class="chat-content" id="chat-content">
             <div class="chat-header">
@@ -427,13 +451,14 @@
                         <input type="range" id="font-size-slider" min="12" max="24" value="16">
                         <span id="font-size-value">16px</span>
                     </div>
-                    <button class="upload-btn" id="upload-btn" onclick="window.open('/upload?user_id=' + encodeURIComponent(userId), '_blank')">上传背景</button>
+                    <button class="upload-btn" id="upload-btn"
+                        onclick="window.open('/upload?user_id=' + encodeURIComponent(userId), '_blank')">上传背景</button>
                     <button class="clear-btn" id="clear-btn">清除页面</button>
                 </div>
             </div>
-            
+
             <div class="chat-messages" id="chat-messages"></div>
-            
+
             <div class="message-input">
                 <textarea id="message-box" placeholder="输入消息..." rows="1"></textarea>
                 <button id="send-button">发送</button>
@@ -455,7 +480,7 @@
         const backgroundImage = document.getElementById('background-image');
         const controlTrigger = document.getElementById('control-trigger');
         const controls = document.getElementById('controls');
-        
+
         // 用户ID和轮询间隔
         const userId = getUserId();
         const POLL_INTERVAL = 2000; // 轮询间隔（毫秒）
@@ -463,10 +488,10 @@
         let displayedMessageIds = new Set(); // 存储已显示的消息ID
         let lastNotificationTime = 0; // 上次通知时间
         const NOTIFICATION_COOLDOWN = 10 * 60 * 1000; // 通知冷却时间（10分钟）
-        
+
         // 计算一小时前的时间戳作为初始时间点
         lastMessageTimestamp = Date.now() - (60 * 60 * 1000);
-        
+
         // 初始化
         function init() {
             // 检查用户ID
@@ -500,65 +525,65 @@
             }
 
             // 设置透明度调节
-            opacitySlider.addEventListener('input', function() {
+            opacitySlider.addEventListener('input', function () {
                 const opacity = this.value / 100;
                 chatContent.style.opacity = opacity;
                 // 背景图不受影响，保持原有透明度
             });
-            
+
             // 设置字体大小调节
-            fontSizeSlider.addEventListener('input', function() {
+            fontSizeSlider.addEventListener('input', function () {
                 const fontSize = this.value;
                 document.body.style.fontSize = `${fontSize}px`;
                 fontSizeValue.textContent = `${fontSize}px`;
-                
+
                 // 保存用户设置到本地存储
                 localStorage.setItem('chatFontSize', fontSize);
             });
-            
+
             // 发送消息处理
             sendButton.addEventListener('click', sendMessage);
-            
+
             // 回车键发送消息
-            messageBox.addEventListener('keydown', function(e) {
+            messageBox.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
                 }
             });
-            
+
             // 清除页面
             clearBtn.addEventListener('click', clearPage);
-            
+
             // 自适应窗口大小
-            window.addEventListener('resize', function() {
+            window.addEventListener('resize', function () {
                 // 自适应逻辑已通过CSS flex实现
             });
-            
+
             // 设置控制面板悬浮显示
             // 点击触发按钮时显示控制面板
-            controlTrigger.addEventListener('click', function() {
+            controlTrigger.addEventListener('click', function () {
                 controls.classList.toggle('visible');
             });
-            
+
             // 鼠标悬浮在触发区域时显示控制面板
-            controlTrigger.addEventListener('mouseenter', function() {
+            controlTrigger.addEventListener('mouseenter', function () {
                 controls.classList.add('visible');
             });
-            
+
             // 鼠标离开控制面板时隐藏
-            controls.addEventListener('mouseleave', function() {
+            controls.addEventListener('mouseleave', function () {
                 controls.classList.remove('visible');
             });
-            
+
             // 确保控制面板在使用时不会自动隐藏
-            controls.addEventListener('mouseenter', function() {
+            controls.addEventListener('mouseenter', function () {
                 clearTimeout(hideControlsTimeout);
             });
-            
+
             // 鼠标离开触发按钮时，延迟隐藏控制面板
             let hideControlsTimeout;
-            controlTrigger.addEventListener('mouseleave', function() {
+            controlTrigger.addEventListener('mouseleave', function () {
                 hideControlsTimeout = setTimeout(() => {
                     // 只有在鼠标不在控制面板上时才隐藏
                     if (!controls.matches(':hover')) {
@@ -566,7 +591,7 @@
                     }
                 }, 300);
             });
-            
+
             // 加载保存的字体大小设置
             const savedFontSize = localStorage.getItem('chatFontSize');
             if (savedFontSize) {
@@ -574,29 +599,29 @@
                 document.body.style.fontSize = `${savedFontSize}px`;
                 fontSizeValue.textContent = `${savedFontSize}px`;
             }
-            
+
             // 启动轮询获取新消息
             fetchMessages();
             setInterval(fetchMessages, POLL_INTERVAL);
         }
-        
+
         // 发送消息到服务器
         async function sendMessage() {
             const messageText = messageBox.value.trim();
             if (!messageText) return;
-            
+
             // 立即在界面上显示自己发送的消息
             appendMessage(messageText, true, Date.now());
-            
+
             // 自动滚动到底部
             chatMessages.scrollTop = chatMessages.scrollHeight;
-            
+
             // 清空输入框
             messageBox.value = '';
-            
+
             // 自动调整文本域高度
             messageBox.style.height = 'auto';
-            
+
             try {
                 const response = await fetch('/api/messages', {
                     method: 'POST',
@@ -608,15 +633,15 @@
                         message: messageText
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // 将消息ID添加到已显示集合中以避免重复显示
                     if (data.id) {
                         displayedMessageIds.add(data.id);
                     }
-                    
+
                     // 更新最后消息时间戳
                     lastMessageTimestamp = data.timestamp;
                 } else {
@@ -626,17 +651,17 @@
                 console.error('发送消息出错:', error);
             }
         }
-        
+
         // 从服务器获取新消息
         async function fetchMessages() {
             try {
                 const response = await fetch(`/api/messages?after=${lastMessageTimestamp}`);
                 const messages = await response.json();
-                
+
                 if (messages.length > 0) {
                     // 更新最后消息时间戳
                     lastMessageTimestamp = Math.max(...messages.map(msg => msg.timestamp));
-                    
+
                     // 显示新消息 - 显示所有用户的消息（包括自己的）
                     messages.forEach(msg => {
                         // 检查消息是否已显示过
@@ -644,17 +669,17 @@
                             // 判断是否是自己发送的消息
                             const isSelf = msg.user_id === userId;
                             appendMessage(msg.message, isSelf, msg.timestamp);
-                            
+
                             // 将消息ID添加到已显示集合中
                             displayedMessageIds.add(msg.id);
-                            
+
                             // 如果不是自己发送的消息，触发通知
                             if (!isSelf) {
                                 sendNotification();
                             }
                         }
                     });
-                    
+
                     // 自动滚动到底部
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
@@ -662,16 +687,11 @@
                 console.error('获取消息出错:', error);
             }
         }
-        
+
         // 将消息添加到聊天记录
         function appendMessage(text, isSelf, timestamp) {
             const messageElement = document.createElement('div');
             messageElement.className = isSelf ? 'message self' : 'message other';
-
-            // 创建消息内容容器
-            const messageContent = document.createElement('span');
-            messageContent.textContent = text;
-            messageElement.appendChild(messageContent);
 
             // 创建时间显示
             const timeElement = document.createElement('span');
@@ -680,15 +700,21 @@
             const messageTime = timestamp ? new Date(timestamp) : new Date();
             const hours = messageTime.getHours().toString().padStart(2, '0');
             const minutes = messageTime.getMinutes().toString().padStart(2, '0');
-            timeElement.textContent = ` ${hours}:${minutes}`;
+            timeElement.textContent = `${hours}:${minutes} `;
             timeElement.style.fontSize = '12px';
             timeElement.style.opacity = '0.7';
-            timeElement.style.marginLeft = '5px';
+            timeElement.style.marginRight = '5px';
 
             messageElement.appendChild(timeElement);
+
+            // 创建消息内容容器
+            const messageContent = document.createElement('span');
+            messageContent.textContent = text;
+            messageElement.appendChild(messageContent);
+
             chatMessages.appendChild(messageElement);
         }
-        
+
         // 清除页面并重置已显示消息记录
         function clearPage() {
             while (chatMessages.firstChild) {
@@ -697,15 +723,16 @@
             // 重置已显示消息集合，避免清除后无法再次显示相同消息
             displayedMessageIds.clear();
         }
-        
+
         // 自动调整文本域高度
-        messageBox.addEventListener('input', function() {
+        messageBox.addEventListener('input', function () {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
-        
+
         // 初始化应用
         init();
     </script>
 </body>
+
 </html>

@@ -119,13 +119,14 @@ def send_message():
     timestamp = int(time.time() * 1000)  # 毫秒时间戳
     
     with get_db_connection() as conn:
-        conn.execute(
+        cursor = conn.execute(
             'INSERT INTO messages (user_id, message, timestamp) VALUES (?, ?, ?)',
             (user_id, message, timestamp)
         )
+        message_id = cursor.lastrowid
         conn.commit()
     
-    return jsonify({'success': True, 'timestamp': timestamp})
+    return jsonify({'success': True, 'id': message_id, 'timestamp': timestamp})
 
 
 @app.route('/api/upload', methods=['POST'])
