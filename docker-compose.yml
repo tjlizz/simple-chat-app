@@ -7,7 +7,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./chat.db:/app/chat.db
+      - ./data:/app/data
       - ./uploads:/app/uploads
       - ./chat_uploads:/app/chat_uploads
       - ./index.html:/app/index.html

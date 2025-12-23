@@ -7,7 +7,7 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['DATABASE'] = 'chat.db'
+app.config['DATABASE'] = os.path.join('data', 'chat.db')
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['CHAT_UPLOAD_FOLDER'] = 'chat_uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
