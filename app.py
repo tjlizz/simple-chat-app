@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.config['DATABASE'] = 'chat.db'
 app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['CHAT_UPLOAD_FOLDER'] = 'chat_uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
@@ -16,6 +17,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 os.makedirs(os.path.dirname(os.path.abspath(app.config['DATABASE'])), exist_ok=True)
 # 确保上传目录存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['CHAT_UPLOAD_FOLDER'], exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -38,6 +40,14 @@ def init_db():
         ''')
         conn.execute('''
         CREATE TABLE IF NOT EXISTS uploaded_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            timestamp INTEGER NOT NULL
+        )
+        ''')
+        conn.execute('''
+        CREATE TABLE IF NOT EXISTS chat_uploaded_images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
             filename TEXT NOT NULL,
@@ -105,6 +115,18 @@ def serve_background():
 
     # 如果没有用户上传的图片，返回默认背景图片
     return send_from_directory('img', 'bg.png')
+
+
+@app.route('/uploads/<user_id>/<filename>')
+def serve_upload(user_id, filename):
+    upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], user_id)
+    return send_from_directory(upload_folder, filename)
+
+
+@app.route('/chat_uploads/<user_id>/<filename>')
+def serve_chat_upload(user_id, filename):
+    upload_folder = os.path.join(app.config['CHAT_UPLOAD_FOLDER'], user_id)
+    return send_from_directory(upload_folder, filename)
 
 
 @app.route('/api/messages', methods=['POST'])
@@ -179,6 +201,59 @@ def upload_file():
         'timestamp': timestamp,
         'message': 'File uploaded successfully'
     })
+
+
+
+@app.route('/api/chat_upload', methods=['POST'])
+def upload_chat_image():
+    # 获取用户ID
+    user_id = request.form.get('user_id')
+
+    if not user_id:
+        return jsonify({'error': 'Missing user_id'}), 400
+
+    # 检查是否有文件上传
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
+
+    # 检查是否选择了文件
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    # 验证文件类型
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'File type not allowed'}), 400
+
+    # 生成安全的文件名
+    filename = secure_filename(file.filename)
+    # 添加时间戳前缀以避免文件名冲突
+    timestamp = int(time.time() * 1000)
+    filename = f"{timestamp}_{filename}"
+
+    # 创建用户专属的上传目录
+    user_upload_dir = os.path.join(app.config['CHAT_UPLOAD_FOLDER'], user_id)
+    os.makedirs(user_upload_dir, exist_ok=True)
+
+    # 保存文件
+    file_path = os.path.join(user_upload_dir, filename)
+    file.save(file_path)
+
+    with get_db_connection() as conn:
+        conn.execute(
+            'INSERT INTO chat_uploaded_images (user_id, filename, timestamp) VALUES (?, ?, ?)',
+            (user_id, filename, timestamp)
+        )
+        conn.commit()
+
+    return jsonify({
+        'success': True,
+        'filename': filename,
+        'timestamp': timestamp,
+        'message': 'Chat image uploaded successfully'
+    })
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

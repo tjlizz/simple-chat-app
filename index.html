@@ -300,6 +300,23 @@
             float: left;
         }
 
+        .message-image-link {
+            display: inline-block;
+        }
+
+        .message-image {
+            max-width: 220px;
+            max-height: 180px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            cursor: zoom-in;
+            transition: filter 0.2s ease;
+        }
+
+        .message-image.is-blurred {
+            filter: blur(10px);
+        }
+
         .message-input {
             display: flex;
             padding: 10px;
@@ -480,6 +497,9 @@
         const backgroundImage = document.getElementById('background-image');
         const controlTrigger = document.getElementById('control-trigger');
         const controls = document.getElementById('controls');
+        const IMAGE_MESSAGE_PREFIX = '[[image]]';
+        const MAX_IMAGE_SIZE = 16 * 1024 * 1024;
+        const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 
         // 用户ID和轮询间隔
         const userId = getUserId();
@@ -552,6 +572,9 @@
                 }
             });
 
+            // 粘贴图片发送
+            messageBox.addEventListener('paste', handlePasteImage);
+
             // 清除页面
             clearBtn.addEventListener('click', clearPage);
 
@@ -605,6 +628,42 @@
             setInterval(fetchMessages, POLL_INTERVAL);
         }
 
+        function isImageMessage(text) {
+            return typeof text === 'string' && text.startsWith(IMAGE_MESSAGE_PREFIX);
+        }
+
+        function getImageUrlFromMessage(text) {
+            return text.slice(IMAGE_MESSAGE_PREFIX.length);
+        }
+
+        async function postMessage(messageText) {
+            try {
+                const response = await fetch('/api/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        message: messageText
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.id) {
+                        displayedMessageIds.add(data.id);
+                    }
+                    lastMessageTimestamp = data.timestamp;
+                } else {
+                    console.error('发送消息失败:', data.error);
+                }
+            } catch (error) {
+                console.error('发送消息出错:', error);
+            }
+        }
+
         // 发送消息到服务器
         async function sendMessage() {
             const messageText = messageBox.value.trim();
@@ -622,33 +681,67 @@
             // 自动调整文本域高度
             messageBox.style.height = 'auto';
 
+            await postMessage(messageText);
+        }
+
+        async function sendImageMessage(imageUrl) {
+            const messageText = IMAGE_MESSAGE_PREFIX + imageUrl;
+            appendMessage(messageText, true, Date.now());
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            await postMessage(messageText);
+        }
+
+        async function uploadClipboardImage(file) {
+            if (!file) return;
+
+            if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+                alert('只支持JPG, PNG, GIF, WEBP 格式的图片');
+                return;
+            }
+
+            if (file.size > MAX_IMAGE_SIZE) {
+                alert('图片大小不能超过 16MB');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('user_id', userId);
+            formData.append('file', file, file.name || 'clipboard.png');
+
             try {
-                const response = await fetch('/api/messages', {
+                const response = await fetch('/api/chat_upload', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        user_id: userId,
-                        message: messageText
-                    })
+                    body: formData
                 });
 
                 const data = await response.json();
 
-                if (data.success) {
-                    // 将消息ID添加到已显示集合中以避免重复显示
-                    if (data.id) {
-                        displayedMessageIds.add(data.id);
-                    }
-
-                    // 更新最后消息时间戳
-                    lastMessageTimestamp = data.timestamp;
+                if (data.success && data.filename) {
+                    const imageUrl = `/chat_uploads/${encodeURIComponent(userId)}/${encodeURIComponent(data.filename)}`;
+                    await sendImageMessage(imageUrl);
                 } else {
-                    console.error('发送消息失败:', data.error);
+                    alert('图片上传失败: ' + (data.error || 'unknown error'));
                 }
             } catch (error) {
-                console.error('发送消息出错:', error);
+                console.error('图片上传出错:', error);
+                alert('图片上传失败，请重试');
+            }
+        }
+
+        function handlePasteImage(e) {
+            const clipboardData = e.clipboardData;
+            if (!clipboardData || !clipboardData.items) return;
+
+            for (let i = 0; i < clipboardData.items.length; i++) {
+                const item = clipboardData.items[i];
+                if (item.type && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) {
+                        e.preventDefault();
+                        uploadClipboardImage(file);
+                    }
+                    break;
+                }
             }
         }
 
@@ -707,10 +800,34 @@
 
             messageElement.appendChild(timeElement);
 
-            // 创建消息内容容器
-            const messageContent = document.createElement('span');
-            messageContent.textContent = text;
-            messageElement.appendChild(messageContent);
+            if (isImageMessage(text)) {
+                const imageUrl = getImageUrlFromMessage(text);
+                const link = document.createElement('a');
+                link.href = imageUrl;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.className = 'message-image-link';
+
+                const image = document.createElement('img');
+                image.src = imageUrl;
+                image.alt = 'image';
+                image.className = 'message-image';
+                image.classList.add('is-blurred');
+                link.addEventListener('click', function (e) {
+                    if (image.classList.contains('is-blurred')) {
+                        e.preventDefault();
+                        image.classList.remove('is-blurred');
+                    }
+                });
+
+                link.appendChild(image);
+                messageElement.appendChild(link);
+            } else {
+                // 创建消息内容容器
+                const messageContent = document.createElement('span');
+                messageContent.textContent = text;
+                messageElement.appendChild(messageContent);
+            }
 
             chatMessages.appendChild(messageElement);
         }
