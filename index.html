@@ -830,16 +830,16 @@
             return text.slice(IMAGE_MESSAGE_PREFIX.length);
         }
 
-        async function postMessage(messageText) {
+        async function postMessage(messageText, replyToId = null) {
             try {
                 const requestBody = {
                     user_id: userId,
                     message: messageText
                 };
 
-                // 如果有引用消息，添加reply_to字段
-                if (currentReplyTo) {
-                    requestBody.reply_to = currentReplyTo.id;
+                // 如果有引用消息ID，添加reply_to字段
+                if (replyToId) {
+                    requestBody.reply_to = replyToId;
                 }
 
                 const response = await fetch('/api/messages', {
@@ -857,8 +857,6 @@
                         displayedMessageIds.add(data.id);
                     }
                     lastMessageTimestamp = data.timestamp;
-                    // 发送成功后关闭引用预览
-                    closeReplyPreview();
                 } else {
                     console.error('发送消息失败:', data.error);
                 }
@@ -872,13 +870,20 @@
             const messageText = messageBox.value.trim();
             if (!messageText) return;
 
+            // 保存引用消息的副本（在关闭预览前）
+            const replyToMessage = currentReplyTo;
+            const replyToId = currentReplyTo ? currentReplyTo.id : null;
+
+            // 立即关闭引用预览框
+            closeReplyPreview();
+
             // 立即在界面上显示自己发送的消息
             // 如果有引用消息，构造完整的消息对象
-            if (currentReplyTo) {
+            if (replyToMessage) {
                 const tempMessageObj = {
                     message: messageText,
                     id: null, // 暂时没有ID
-                    replied_message: currentReplyTo
+                    replied_message: replyToMessage
                 };
                 appendMessage(tempMessageObj, true, Date.now());
             } else {
@@ -894,24 +899,32 @@
             // 自动调整文本域高度
             messageBox.style.height = 'auto';
 
-            await postMessage(messageText);
+            await postMessage(messageText, replyToId);
         }
 
         async function sendImageMessage(imageUrl) {
             const messageText = IMAGE_MESSAGE_PREFIX + imageUrl;
+
+            // 保存引用消息的副本（在关闭预览前）
+            const replyToMessage = currentReplyTo;
+            const replyToId = currentReplyTo ? currentReplyTo.id : null;
+
+            // 立即关闭引用预览框
+            closeReplyPreview();
+
             // 如果有引用消息，构造完整的消息对象
-            if (currentReplyTo) {
+            if (replyToMessage) {
                 const tempMessageObj = {
                     message: messageText,
                     id: null,
-                    replied_message: currentReplyTo
+                    replied_message: replyToMessage
                 };
                 appendMessage(tempMessageObj, true, Date.now());
             } else {
                 appendMessage(messageText, true, Date.now());
             }
             chatMessages.scrollTop = chatMessages.scrollHeight;
-            await postMessage(messageText);
+            await postMessage(messageText, replyToId);
         }
 
         async function uploadClipboardImage(file) {
