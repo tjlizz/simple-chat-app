@@ -61,6 +61,13 @@ def init_db():
             timestamp INTEGER NOT NULL
         )
         ''')
+        conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_settings (
+            user_id TEXT PRIMARY KEY,
+            page_title TEXT DEFAULT NULL,
+            updated_at INTEGER NOT NULL
+        )
+        ''')
         conn.commit()
 
 # 初始化数据库
@@ -283,6 +290,47 @@ def upload_chat_image():
         'timestamp': timestamp,
         'message': 'Chat image uploaded successfully'
     })
+
+
+@app.route('/api/user_settings/page_title', methods=['GET'])
+def get_page_title():
+    user_id = request.args.get('user_id')
+
+    if not user_id:
+        return jsonify({'error': 'Missing user_id'}), 400
+
+    with get_db_connection() as conn:
+        setting = conn.execute(
+            'SELECT page_title FROM user_settings WHERE user_id = ?',
+            (user_id,)
+        ).fetchone()
+
+        if setting and setting['page_title']:
+            return jsonify({'success': True, 'page_title': setting['page_title']})
+        else:
+            return jsonify({'success': True, 'page_title': None})
+
+
+@app.route('/api/user_settings/page_title', methods=['POST'])
+def set_page_title():
+    data = request.json
+
+    if not data or not data.get('user_id'):
+        return jsonify({'error': 'Missing user_id'}), 400
+
+    user_id = data.get('user_id')
+    page_title = data.get('page_title', '')
+    timestamp = int(time.time() * 1000)
+
+    with get_db_connection() as conn:
+        # 使用 INSERT OR REPLACE 来更新或插入
+        conn.execute(
+            'INSERT OR REPLACE INTO user_settings (user_id, page_title, updated_at) VALUES (?, ?, ?)',
+            (user_id, page_title if page_title else None, timestamp)
+        )
+        conn.commit()
+
+    return jsonify({'success': True, 'page_title': page_title})
 
 
 if __name__ == '__main__':

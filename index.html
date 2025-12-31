@@ -559,6 +559,11 @@
                 <!-- 控制面板，默认隐藏 -->
                 <div class="controls" id="controls">
                     <div class="control-group">
+                        <label for="page-title-input">页面标题:</label>
+                        <input type="text" id="page-title-input" placeholder="自定义标题" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; width: 150px;">
+                        <button class="save-title-btn" id="save-title-btn" style="padding: 5px 10px; border-radius: 4px;">保存</button>
+                    </div>
+                    <div class="control-group">
                         <label for="opacity-slider">透明度:</label>
                         <input type="range" id="opacity-slider" min="20" max="100" value="80">
                     </div>
@@ -605,6 +610,8 @@
         const backgroundImage = document.getElementById('background-image');
         const controlTrigger = document.getElementById('control-trigger');
         const controls = document.getElementById('controls');
+        const pageTitleInput = document.getElementById('page-title-input');
+        const saveTitleBtn = document.getElementById('save-title-btn');
         const IMAGE_MESSAGE_PREFIX = '[[image]]';
         const MAX_IMAGE_SIZE = 16 * 1024 * 1024;
         const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -645,6 +652,57 @@
         // 绑定关闭按钮事件
         replyPreviewClose.addEventListener('click', closeReplyPreview);
 
+        // 加载页面标题
+        async function loadPageTitle() {
+            try {
+                const response = await fetch(`/api/user_settings/page_title?user_id=${encodeURIComponent(userId)}`);
+                const data = await response.json();
+
+                if (data.success && data.page_title) {
+                    document.title = data.page_title;
+                    pageTitleInput.value = data.page_title;
+                } else {
+                    document.title = '百度一下';
+                }
+            } catch (error) {
+                console.error('加载页面标题出错:', error);
+                document.title = '百度一下';
+            }
+        }
+
+        // 保存页面标题
+        async function savePageTitle() {
+            const newTitle = pageTitleInput.value.trim();
+
+            try {
+                const response = await fetch('/api/user_settings/page_title', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        page_title: newTitle
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.title = newTitle || '百度一下';
+                    alert('页面标题已保存！');
+                } else {
+                    alert('保存失败，请重试');
+                }
+            } catch (error) {
+                console.error('保存页面标题出错:', error);
+                alert('保存失败，请重试');
+            }
+        }
+
+        // 绑定保存标题按钮事件
+        saveTitleBtn.addEventListener('click', savePageTitle);
+
         // 初始化
         function init() {
             // 检查用户ID
@@ -668,6 +726,9 @@
                 `;
                 return;
             }
+
+            // 加载自定义页面标题
+            loadPageTitle();
 
             // 设置通知
             setupNotifications();
