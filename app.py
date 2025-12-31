@@ -35,9 +35,16 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
             message TEXT NOT NULL,
-            timestamp INTEGER NOT NULL
+            timestamp INTEGER NOT NULL,
+            reply_to INTEGER DEFAULT NULL
         )
         ''')
+        # 为已存在的表添加reply_to列（如果不存在）
+        try:
+            conn.execute('ALTER TABLE messages ADD COLUMN reply_to INTEGER DEFAULT NULL')
+        except sqlite3.OperationalError:
+            # 列已存在，忽略错误
+            pass
         conn.execute('''
         CREATE TABLE IF NOT EXISTS uploaded_images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,23 +83,45 @@ def upload_page():
 def get_messages():
     # 获取时间戳参数，只返回该时间戳之后的消息
     last_timestamp = request.args.get('after', 0, type=int)
-    
+
     # 计算1小时前的时间戳 (毫秒)
     one_hour_ago = int(time.time() * 1000) - (60 * 60 * 1000)
-    
+
     with get_db_connection() as conn:
         messages = conn.execute(
             'SELECT * FROM messages WHERE timestamp > ? AND timestamp > ? ORDER BY timestamp ASC',
             (last_timestamp, one_hour_ago)
         ).fetchall()
-        
-    return jsonify([{
-        'id': message['id'],
-        'user_id': message['user_id'],
-        'message': message['message'],
-        'timestamp': message['timestamp'],
-        'is_self': False  # 在客户端处理
-    } for message in messages])
+
+        result = []
+        for message in messages:
+            msg_dict = {
+                'id': message['id'],
+                'user_id': message['user_id'],
+                'message': message['message'],
+                'timestamp': message['timestamp'],
+                'is_self': False,  # 在客户端处理
+                'reply_to': message['reply_to'] if message['reply_to'] else None
+            }
+
+            # 如果有引用消息，获取被引用消息的内容
+            if message['reply_to']:
+                replied_msg = conn.execute(
+                    'SELECT * FROM messages WHERE id = ?',
+                    (message['reply_to'],)
+                ).fetchone()
+
+                if replied_msg:
+                    msg_dict['replied_message'] = {
+                        'id': replied_msg['id'],
+                        'user_id': replied_msg['user_id'],
+                        'message': replied_msg['message'],
+                        'timestamp': replied_msg['timestamp']
+                    }
+
+            result.append(msg_dict)
+
+    return jsonify(result)
 
 
 @app.route('/img/bg.png')
@@ -132,22 +161,23 @@ def serve_chat_upload(user_id, filename):
 @app.route('/api/messages', methods=['POST'])
 def send_message():
     data = request.json
-    
+
     if not data or not data.get('message') or not data.get('user_id'):
         return jsonify({'error': 'Missing required fields'}), 400
-    
+
     user_id = data.get('user_id')
     message = data.get('message')
+    reply_to = data.get('reply_to')  # 获取引用消息ID
     timestamp = int(time.time() * 1000)  # 毫秒时间戳
-    
+
     with get_db_connection() as conn:
         cursor = conn.execute(
-            'INSERT INTO messages (user_id, message, timestamp) VALUES (?, ?, ?)',
-            (user_id, message, timestamp)
+            'INSERT INTO messages (user_id, message, timestamp, reply_to) VALUES (?, ?, ?, ?)',
+            (user_id, message, timestamp, reply_to)
         )
         message_id = cursor.lastrowid
         conn.commit()
-    
+
     return jsonify({'success': True, 'id': message_id, 'timestamp': timestamp})
 
 
