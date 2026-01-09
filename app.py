@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
+from functools import wraps
 import sqlite3
 import os
 import time
@@ -12,6 +13,32 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['CHAT_UPLOAD_FOLDER'] = 'chat_uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Basic Auth 配置
+BASIC_AUTH_USERNAME = os.environ.get('BASIC_AUTH_USERNAME', '')
+BASIC_AUTH_PASSWORD = os.environ.get('BASIC_AUTH_PASSWORD', '')
+BASIC_AUTH_ENABLED = bool(BASIC_AUTH_USERNAME and BASIC_AUTH_PASSWORD)
+
+# Basic Auth 装饰器
+def require_basic_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # 如果未启用鉴权，直接通过
+        if not BASIC_AUTH_ENABLED:
+            return f(*args, **kwargs)
+
+        auth = request.authorization
+
+        if not auth or not (auth.username == BASIC_AUTH_USERNAME and auth.password == BASIC_AUTH_PASSWORD):
+            return Response(
+                'Authentication required',
+                401,
+                {'WWW-Authenticate': 'Basic realm="Login Required"'}
+            )
+
+        return f(*args, **kwargs)
+
+    return decorated
 
 # 确保数据库目录存在
 os.makedirs(os.path.dirname(os.path.abspath(app.config['DATABASE'])), exist_ok=True)
@@ -74,12 +101,14 @@ def init_db():
 init_db()
 
 @app.route('/')
+@require_basic_auth
 def index():
     # 将首页作为静态文件发送
     return send_from_directory('.', 'index.html')
 
 
 @app.route('/upload')
+@require_basic_auth
 def upload_page():
     # 将上传页面作为静态文件发送
     return send_from_directory('.', 'upload.html')
@@ -87,6 +116,7 @@ def upload_page():
 # 移除了清理消息的API端点，保留所有消息在数据库中
 
 @app.route('/api/messages', methods=['GET'])
+@require_basic_auth
 def get_messages():
     # 获取时间戳参数，只返回该时间戳之后的消息
     last_timestamp = request.args.get('after', 0, type=int)
@@ -132,6 +162,7 @@ def get_messages():
 
 
 @app.route('/img/bg.png')
+@require_basic_auth
 def serve_background():
     # 获取用户ID参数
     user_id = request.args.get('user_id')
@@ -154,18 +185,21 @@ def serve_background():
 
 
 @app.route('/uploads/<user_id>/<filename>')
+@require_basic_auth
 def serve_upload(user_id, filename):
     upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], user_id)
     return send_from_directory(upload_folder, filename)
 
 
 @app.route('/chat_uploads/<user_id>/<filename>')
+@require_basic_auth
 def serve_chat_upload(user_id, filename):
     upload_folder = os.path.join(app.config['CHAT_UPLOAD_FOLDER'], user_id)
     return send_from_directory(upload_folder, filename)
 
 
 @app.route('/api/messages', methods=['POST'])
+@require_basic_auth
 def send_message():
     data = request.json
 
@@ -189,6 +223,7 @@ def send_message():
 
 
 @app.route('/api/upload', methods=['POST'])
+@require_basic_auth
 def upload_file():
     # 获取用户ID
     user_id = request.form.get('user_id')
@@ -242,6 +277,7 @@ def upload_file():
 
 
 @app.route('/api/chat_upload', methods=['POST'])
+@require_basic_auth
 def upload_chat_image():
     # 获取用户ID
     user_id = request.form.get('user_id')
@@ -293,6 +329,7 @@ def upload_chat_image():
 
 
 @app.route('/api/user_settings/page_title', methods=['GET'])
+@require_basic_auth
 def get_page_title():
     user_id = request.args.get('user_id')
 
@@ -312,6 +349,7 @@ def get_page_title():
 
 
 @app.route('/api/user_settings/page_title', methods=['POST'])
+@require_basic_auth
 def set_page_title():
     data = request.json
 
@@ -334,4 +372,14 @@ def set_page_title():
 
 
 if __name__ == '__main__':
+    print("=" * 60)
+    print("Simple Chat App Starting...")
+    if BASIC_AUTH_ENABLED:
+        print(f"✓ Basic Auth ENABLED")
+        print(f"  Username: {BASIC_AUTH_USERNAME}")
+        print(f"  Password: {'*' * len(BASIC_AUTH_PASSWORD)}")
+    else:
+        print("⚠ Basic Auth DISABLED (no credentials configured)")
+        print("  Set BASIC_AUTH_USERNAME and BASIC_AUTH_PASSWORD to enable")
+    print("=" * 60)
     app.run(debug=True, host='0.0.0.0', port=5000)
