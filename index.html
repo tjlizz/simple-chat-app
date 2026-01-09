@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>百度一下</title>
+    <!-- emoji-picker-element -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <script>
         // 从URL参数中获取用户ID
         function getUserId() {
@@ -17,6 +19,14 @@
             }
 
             return userId;
+        }
+
+        // 从URL参数中获取是否启用表情功能
+        function isEmojiEnabled() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const emojiParam = urlParams.get('emoji');
+            // 只有明确设置为 'true' 或 '1' 时才启用，默认不启用
+            return emojiParam === 'true' || emojiParam === '1';
         }
 
         // 浏览器通知功能
@@ -178,8 +188,8 @@
             /* 视口高度 */
             z-index: 0;
             /* 设置为0，使其在聊天内容之下但可以独立控制 */
-            background-size: cover;
-            /* 保持图片比例，覆盖整个区域 */
+            background-size: auto;
+            /* 保持原始大小，不拉伸不模糊 */
             background-repeat: no-repeat;
             background-position: center;
             /* 图片居中显示 */
@@ -542,6 +552,56 @@
             border: 1px solid transparent;
             border-radius: 3px;
         }
+
+        /* 表情选择器样式 */
+        .emoji-button {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            padding: 8px;
+            outline: none;
+            margin-right: 5px;
+            font-size: 20px;
+            width: 40px;
+            height: 40px;
+            display: none; /* 默认隐藏，通过JS控制显示 */
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(0px);
+            transition: opacity 0.2s;
+        }
+
+        .emoji-button:hover {
+            opacity: 0.7;
+        }
+
+        .emoji-picker-container {
+            position: fixed;
+            bottom: 70px;
+            right: 10px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .emoji-picker-container.visible {
+            display: block;
+        }
+
+        /* 自定义 emoji-picker 样式 */
+        emoji-picker {
+            --background: rgba(255, 255, 255, 0.95);
+            --border-color: rgba(200, 200, 200, 0.5);
+            --category-emoji-size: 1.5rem;
+            --emoji-size: 1.75rem;
+            --input-border-color: rgba(200, 200, 200, 0.5);
+            --input-font-color: #333;
+            --outline-color: rgba(100, 100, 100, 0.5);
+            backdrop-filter: blur(10px);
+        }
     </style>
 </head>
 
@@ -590,8 +650,14 @@
             </div>
 
             <div class="message-input">
+                <button class="emoji-button" id="emoji-button" title="选择表情">😊</button>
                 <textarea id="message-box" placeholder="输入消息..." rows="1"></textarea>
                 <button id="send-button">发送</button>
+            </div>
+
+            <!-- 表情选择器容器 -->
+            <div class="emoji-picker-container" id="emoji-picker-container">
+                <emoji-picker></emoji-picker>
             </div>
         </div>
     </div>
@@ -612,6 +678,8 @@
         const controls = document.getElementById('controls');
         const pageTitleInput = document.getElementById('page-title-input');
         const saveTitleBtn = document.getElementById('save-title-btn');
+        const emojiButton = document.getElementById('emoji-button');
+        const emojiPickerContainer = document.getElementById('emoji-picker-container');
         const IMAGE_MESSAGE_PREFIX = '[[image]]';
         const MAX_IMAGE_SIZE = 16 * 1024 * 1024;
         const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -817,9 +885,77 @@
                 fontSizeValue.textContent = `${savedFontSize}px`;
             }
 
+            // 表情选择器事件（仅在启用时）
+            if (isEmojiEnabled()) {
+                setupEmojiPicker();
+            } else {
+                // 如果未启用表情，隐藏表情相关元素
+                if (emojiButton) {
+                    emojiButton.style.display = 'none';
+                }
+                if (emojiPickerContainer) {
+                    emojiPickerContainer.style.display = 'none';
+                }
+            }
+
             // 启动轮询获取新消息
             fetchMessages();
             setInterval(fetchMessages, POLL_INTERVAL);
+        }
+
+        // 设置表情选择器
+        function setupEmojiPicker() {
+            const picker = document.querySelector('emoji-picker');
+
+            if (!picker || !emojiButton || !emojiPickerContainer) {
+                console.warn('表情选择器元素未找到');
+                return;
+            }
+
+            // 显示表情按钮
+            emojiButton.style.display = 'flex';
+
+            // 切换表情选择器显示/隐藏
+            emojiButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                emojiPickerContainer.classList.toggle('visible');
+            });
+
+            // 监听表情选择事件
+            picker.addEventListener('emoji-click', function(event) {
+                const emoji = event.detail.unicode;
+                insertEmojiAtCursor(emoji);
+                // 选择表情后自动关闭
+                emojiPickerContainer.classList.remove('visible');
+            });
+
+            // 点击页面其他地方关闭表情选择器
+            document.addEventListener('click', function(e) {
+                if (!emojiPickerContainer.contains(e.target) && e.target !== emojiButton) {
+                    emojiPickerContainer.classList.remove('visible');
+                }
+            });
+        }
+
+        // 在光标位置插入表情
+        function insertEmojiAtCursor(emoji) {
+            const startPos = messageBox.selectionStart;
+            const endPos = messageBox.selectionEnd;
+            const textBefore = messageBox.value.substring(0, startPos);
+            const textAfter = messageBox.value.substring(endPos);
+
+            messageBox.value = textBefore + emoji + textAfter;
+
+            // 将光标移动到表情后面
+            const newCursorPos = startPos + emoji.length;
+            messageBox.selectionStart = newCursorPos;
+            messageBox.selectionEnd = newCursorPos;
+
+            // 聚焦到输入框
+            messageBox.focus();
+
+            // 触发 input 事件以更新文本域高度
+            messageBox.dispatchEvent(new Event('input'));
         }
 
         function isImageMessage(text) {
