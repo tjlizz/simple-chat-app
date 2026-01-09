@@ -14,8 +14,8 @@ services:
     environment:
       - FLASK_ENV=production
       # Basic Auth 配置 - 从环境变量或 .env 文件读取
-      - BASIC_AUTH_USERNAME=${BASIC_AUTH_USERNAME:xdp}
-      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD:xdp123456}
+      - BASIC_AUTH_USERNAME=${BASIC_AUTH_USERNAME:-}
+      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD:-}
     env_file:
       - .env
     restart: unless-stopped
