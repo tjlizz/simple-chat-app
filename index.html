@@ -1181,7 +1181,24 @@
         async function fetchMessages() {
             try {
                 const response = await fetch(`/api/messages?after=${lastMessageTimestamp}&user_id=${encodeURIComponent(userId)}`);
-                const messages = await response.json();
+                const data = await response.json();
+
+                // 处理撤回的消息
+                if (data.recalled_message_ids && data.recalled_message_ids.length > 0) {
+                    data.recalled_message_ids.forEach(recalledId => {
+                        // 从页面中移除被撤回的消息
+                        const messageElements = chatMessages.querySelectorAll('.message');
+                        messageElements.forEach(elem => {
+                            if (elem.dataset.messageId == recalledId) {
+                                elem.remove();
+                                // 从已显示集合中移除
+                                displayedMessageIds.delete(recalledId);
+                            }
+                        });
+                    });
+                }
+
+                const messages = data.messages || [];
 
                 if (messages.length > 0) {
                     // 更新最后消息时间戳

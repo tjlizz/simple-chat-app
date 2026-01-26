@@ -175,7 +175,20 @@ def get_messages():
 
             result.append(msg_dict)
 
-    return jsonify(result)
+        # 获取最近被撤回的消息ID列表（最近1小时内）
+        # 对于非user_id=33的用户，返回被撤回的消息ID，以便前端移除
+        recalled_ids = []
+        if user_id != '33':
+            recalled_messages = conn.execute(
+                'SELECT id FROM messages WHERE is_recalled = 1 AND timestamp > ?',
+                (one_hour_ago,)
+            ).fetchall()
+            recalled_ids = [msg['id'] for msg in recalled_messages]
+
+    return jsonify({
+        'messages': result,
+        'recalled_message_ids': recalled_ids
+    })
 
 
 @app.route('/img/bg.png')
