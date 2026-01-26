@@ -72,6 +72,12 @@ def init_db():
         except sqlite3.OperationalError:
             # 列已存在，忽略错误
             pass
+        # 为已存在的表添加is_recalled列（如果不存在）
+        try:
+            conn.execute('ALTER TABLE messages ADD COLUMN is_recalled INTEGER DEFAULT 0')
+        except sqlite3.OperationalError:
+            # 列已存在，忽略错误
+            pass
         conn.execute('''
         CREATE TABLE IF NOT EXISTS uploaded_images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,15 +126,25 @@ def upload_page():
 def get_messages():
     # 获取时间戳参数，只返回该时间戳之后的消息
     last_timestamp = request.args.get('after', 0, type=int)
+    # 获取用户ID参数
+    user_id = request.args.get('user_id', '')
 
     # 计算1小时前的时间戳 (毫秒)
     one_hour_ago = int(time.time() * 1000) - (60 * 60 * 1000)
 
     with get_db_connection() as conn:
-        messages = conn.execute(
-            'SELECT * FROM messages WHERE timestamp > ? AND timestamp > ? ORDER BY timestamp ASC',
-            (last_timestamp, one_hour_ago)
-        ).fetchall()
+        # 如果是user_id=33，显示所有消息（包括撤回的）
+        # 否则只显示未撤回的消息
+        if user_id == '33':
+            messages = conn.execute(
+                'SELECT * FROM messages WHERE timestamp > ? AND timestamp > ? ORDER BY timestamp ASC',
+                (last_timestamp, one_hour_ago)
+            ).fetchall()
+        else:
+            messages = conn.execute(
+                'SELECT * FROM messages WHERE timestamp > ? AND timestamp > ? AND (is_recalled IS NULL OR is_recalled = 0) ORDER BY timestamp ASC',
+                (last_timestamp, one_hour_ago)
+            ).fetchall()
 
         result = []
         for message in messages:
@@ -138,7 +154,8 @@ def get_messages():
                 'message': message['message'],
                 'timestamp': message['timestamp'],
                 'is_self': False,  # 在客户端处理
-                'reply_to': message['reply_to'] if message['reply_to'] else None
+                'reply_to': message['reply_to'] if message['reply_to'] else None,
+                'is_recalled': message['is_recalled'] if 'is_recalled' in message.keys() else 0
             }
 
             # 如果有引用消息，获取被引用消息的内容
@@ -220,6 +237,37 @@ def send_message():
         conn.commit()
 
     return jsonify({'success': True, 'id': message_id, 'timestamp': timestamp})
+
+
+@app.route('/api/messages/recall', methods=['POST'])
+@require_basic_auth
+def recall_message():
+    data = request.json
+
+    if not data or not data.get('message_id') or not data.get('user_id'):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    message_id = data.get('message_id')
+    user_id = data.get('user_id')
+
+    with get_db_connection() as conn:
+        # 验证消息是否存在且属于该用户
+        message = conn.execute(
+            'SELECT * FROM messages WHERE id = ? AND user_id = ?',
+            (message_id, user_id)
+        ).fetchone()
+
+        if not message:
+            return jsonify({'error': 'Message not found or unauthorized'}), 404
+
+        # 标记消息为已撤回
+        conn.execute(
+            'UPDATE messages SET is_recalled = 1 WHERE id = ?',
+            (message_id,)
+        )
+        conn.commit()
+
+    return jsonify({'success': True})
 
 
 @app.route('/api/upload', methods=['POST'])
